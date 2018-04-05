@@ -11,25 +11,22 @@ namespace Lab1
     {
         private string _inputFileDirectory;
         private string _inputFilename;
-
-        private string _outputFileDirectory;
         private string _outputFilename;
 
         private List<String> _outputString;
 
 
-        public CodeBase64(string inputFileDirectory, string outputFileDirectory)
+        public CodeBase64(string inputFileDirectory, string outputFileName)
         {
-            
+
             _inputFileDirectory = inputFileDirectory;
             _inputFilename = Path.GetFileName(inputFileDirectory);
 
-            _outputFileDirectory = outputFileDirectory;
-            _outputFilename = Path.GetFileName(outputFileDirectory);
+            _outputFilename = outputFileName;
 
             _outputString = new List<string>();
-            
- 
+
+
 
         }
 
@@ -41,9 +38,10 @@ namespace Lab1
 
         public void DecodeBase64()
         {
+            LoadFileToDecode();
+            SaveToFile();
 
         }
-
 
         private void LoadFileToEncode()
         {
@@ -63,13 +61,13 @@ namespace Lab1
 
 
             }
-            catch(IOException e)
+            catch (IOException e)
             {
-                Console.WriteLine("Unable to load file %s",e);
+                Console.WriteLine("Unable to load file %s", e);
             }
 
         }
-        
+
         private void LoadFileToDecode()
         {
             try
@@ -95,13 +93,13 @@ namespace Lab1
             bool[] mask = new bool[2];
 
 
-            if(input.Length <= 2)
+            if (input.Length <= 2)
             {
                 if (input.Length <= 1)
                 {
                     input += '\0';
                     mask[0] = true;
-                }    
+                }
                 input += '\0';
                 mask[1] = true;
             }
@@ -115,44 +113,44 @@ namespace Lab1
             enc[1] = Convert.ToByte((groupValues >> 12) & 63);
             enc[2] = Convert.ToByte((groupValues >> 6) & 63);
             enc[3] = Convert.ToByte((groupValues >> 0) & 63);
-            
 
-            for(int i=0;i<enc.Length;i++)
+
+            for (int i = 0; i < enc.Length; i++)
             {
                 //Duze znaki            
-                if(enc[i] <= 25)
+                if (enc[i] <= 25)
                 {
                     enc[i] += 65;
                     continue;
                 }
-               
+
                 //Male znaki
-                if(enc[i] <= 51)
+                if (enc[i] <= 51)
                 {
                     enc[i] += 71;
                     continue;
                 }
 
                 //0-9
-                if(enc[i] <= 61)
+                if (enc[i] <= 61)
                 {
                     enc[i] -= 4;
                     continue;
                 }
 
                 //Znak +
-                if(enc[i] == 62)
+                if (enc[i] == 62)
                 {
                     enc[i] = 43;
                     continue;
                 }
 
                 //Znak /
-                if(enc[i] == 63)
+                if (enc[i] == 63)
                 {
                     enc[i] = 47;
                     continue;
-                }          
+                }
             }
 
             if (mask[0])
@@ -160,30 +158,96 @@ namespace Lab1
             if (mask[1])
                 enc[3] = 61;
 
-            for(int i=0;i< enc.Length;i++)
+            for (int i = 0; i < enc.Length; i++)
             {
-                _outputString.Add(Convert.ToString((char) enc[i]));
+                _outputString.Add(Convert.ToString((char)enc[i]));
             }
         }
 
         private void DecodeString(string input)
         {
+            byte[] values = new byte[input.Length];
+
+            for(int i=0;i<input.Length;i++)
+            {
+                values[i] = Convert.ToByte(input[i]);
+            }
+
+
+            for(int i=0;i<input.Length;i++)
+            {
+
+                //Duże znaki
+                if(values[i] >= 65 && values[i] <= 90)
+                {
+                    values[i] -= 65;
+                    continue;
+                }
+                
+                //Małe znaki
+                if(values[i] >= 97 && values[i] <= 122)
+                {
+                    values[i] -= 71;
+                    continue;
+                }
+
+
+                //Znak =
+                if(values[i] == 61)
+                {
+                    values[i] = 255;
+                    continue;
+                }
+
+                //0-9
+                if(values[i] >= 48 && values[i] <= 57)
+                {
+                    values[i] += 4;
+                    continue;
+                }
+                //+
+                if (values[i] == 43)
+                {
+                    values[i] = 62;
+                    continue;
+                }
+
+                // dla slasha
+                if (values[i] == 47)
+                {
+                    values[i] = 63;
+                    continue;
+                }
+            }
+
+
+            int groupValues = (values[0] << 18) | (values[1] << 12) | (values[2] << 6) | values[3];
+
+            byte[] enc = new byte[3];
+
+            enc[0] = Convert.ToByte((groupValues >> 16) & 255);
+            enc[1] = Convert.ToByte((groupValues >> 8) & 255);
+            enc[2] = Convert.ToByte(groupValues & 255);
+
+            for(int i=0;i<enc.Length;i++)
+            {
+                if(!(values[i] == 255 && values[i+1] == 255))
+                    _outputString.Add(Convert.ToString((char)enc[i]));
+            }
 
         }
 
 
         private void SaveToFile()
         {
-            string textString = string.Join("",_outputString.ToArray());
+            string textString = string.Join("", _outputString.ToArray());
 
 
-            using (System.IO.StreamWriter outputFile = new System.IO.StreamWriter(Directory.GetParent(_inputFileDirectory) + "//kk.txt"))
+            using (System.IO.StreamWriter outputFile = new System.IO.StreamWriter(Directory.GetParent(_inputFileDirectory) + "//" + _outputFilename))
             {
                 outputFile.Write(textString);
                 outputFile.Close();
             }
-
-           
 
         }
 
