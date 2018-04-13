@@ -13,7 +13,7 @@ namespace Lab1
         private string _inputFilename;
         private string _outputFilename;
 
-        private List<String> _outputString;
+        private List<Byte> _outputString;
 
 
         public CodeBase64(string inputFileDirectory, string outputFileName)
@@ -24,7 +24,7 @@ namespace Lab1
 
             _outputFilename = outputFileName;
 
-            _outputString = new List<string>();
+            _outputString = new List<Byte>();
 
 
 
@@ -47,18 +47,26 @@ namespace Lab1
         {
             try
             {
-                StreamReader sr = new StreamReader(_inputFileDirectory);
-                string currentBuffer = sr.ReadToEnd();
-                sr.Close();
-
-
+                byte[] fileBytes = File.ReadAllBytes(_inputFileDirectory);
                 int i = 0;
 
-                for (i = 0; i < currentBuffer.Length - 3; i = i + 3)
-                    CodeString(currentBuffer.Substring(i, 3));
+                for (i = 0; i < fileBytes.Length - 3; i = i + 3)
+                {
+                    List<byte> tmpBytes = new List<byte>();
 
-                CodeString(currentBuffer.Substring(i, currentBuffer.Length - i));
+                    for (int j = 0; j < 3; j++)
+                        tmpBytes.Add(fileBytes[i + j]);
 
+                    CodeString(tmpBytes);
+                }
+
+                List<byte> lastBytes = new List<byte>();
+                for (int j = i; j < fileBytes.Length; j++)
+                {
+                    lastBytes.Add(fileBytes[j]);
+                }
+                    CodeString(lastBytes);
+  
 
             }
             catch (IOException e)
@@ -79,6 +87,7 @@ namespace Lab1
                 for (int i = 0; i < currentBuffer.Length; i = i + 4)
                     DecodeString(currentBuffer.Substring(i, 4));
 
+
             }
             catch (IOException e)
             {
@@ -88,22 +97,24 @@ namespace Lab1
         }
 
 
-        private void CodeString(string input)
+        private void CodeString(List<byte> input)
         {
             bool[] mask = new bool[2];
 
-
-            if (input.Length <= 2)
+            if (input.Count == 0)
+                return;
+            
+            if (input.Count <= 2)
             {
-                if (input.Length <= 1)
+                if (input.Count <= 1)
                 {
-                    input += '\0';
+                    input.Add(0);
                     mask[0] = true;
                 }
-                input += '\0';
+                input.Add(0);
                 mask[1] = true;
             }
-
+            
 
 
             int groupValues = (input[0] << 16) | (input[1] << 8) | (input[2]);
@@ -160,7 +171,7 @@ namespace Lab1
 
             for (int i = 0; i < enc.Length; i++)
             {
-                _outputString.Add(Convert.ToString((char)enc[i]));
+                _outputString.Add(enc[i]);
             }
         }
 
@@ -171,6 +182,10 @@ namespace Lab1
             for(int i=0;i<input.Length;i++)
             {
                 values[i] = Convert.ToByte(input[i]);
+
+                if (values[i] == 61)
+                    values[i] = 255;
+
             }
 
 
@@ -191,13 +206,6 @@ namespace Lab1
                     continue;
                 }
 
-
-                //Znak =
-                if(values[i] == 61)
-                {
-                    values[i] = 255;
-                    continue;
-                }
 
                 //0-9
                 if(values[i] >= 48 && values[i] <= 57)
@@ -231,8 +239,10 @@ namespace Lab1
 
             for(int i=0;i<enc.Length;i++)
             {
-                if(!(values[i] == 255 && values[i+1] == 255))
-                    _outputString.Add(Convert.ToString((char)enc[i]));
+                if (input[i + 1] != '=')
+                    _outputString.Add(enc[i]);
+                else
+                    return;
             }
 
         }
@@ -242,12 +252,9 @@ namespace Lab1
         {
             string textString = string.Join("", _outputString.ToArray());
 
+            File.ReadAllBytes(_inputFileDirectory);
+            File.WriteAllBytes(Directory.GetParent(_inputFileDirectory) + "//" + _outputFilename, _outputString.ToArray());
 
-            using (System.IO.StreamWriter outputFile = new System.IO.StreamWriter(Directory.GetParent(_inputFileDirectory) + "//" + _outputFilename))
-            {
-                outputFile.Write(textString);
-                outputFile.Close();
-            }
 
         }
 
