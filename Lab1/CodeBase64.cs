@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Lab1
 {
-    class CodeBase64
+    public class CodeBase64
     {
         private string _inputFileDirectory;
         private string _inputFilename;
@@ -29,6 +29,10 @@ namespace Lab1
 
 
         }
+        public CodeBase64()
+        {
+
+        }
 
         public void EncodeBase64()
         {
@@ -42,6 +46,39 @@ namespace Lab1
             SaveToFile();
 
         }
+
+
+        public string EncodeBase64(string value)
+        {
+
+            _outputString = new List<Byte>();
+            byte[] bytes = Encoding.ASCII.GetBytes(value);
+
+
+            int i = 0;
+
+            for (i = 0; i < bytes.Length - 3; i = i + 3)
+            {
+                List<byte> tmpBytes = new List<byte>();
+
+                for (int j = 0; j < 3; j++)
+                    tmpBytes.Add(bytes[i + j]);
+
+                CodeString(tmpBytes);
+            }
+
+            List<byte> lastBytes = new List<byte>();
+            for (int j = i; j < value.Length; j++)
+            {
+                lastBytes.Add(bytes[j]);
+            }
+            CodeString(lastBytes);
+
+
+            return System.Text.Encoding.UTF8.GetString(_outputString.ToArray());
+        }
+
+
 
         private void LoadFileToEncode()
         {
