@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -24,10 +26,23 @@ namespace Lab4
 
         public FTPClient()
         {
-            _login = "patrykpiotrowski19.ugu.pl";
-            _password = "TajneHaslo123";
-            _hosting = "patrykpiotrowski19.ugu.pl";
-            _port = 21;
+
+            Console.WriteLine("FTP CLIENT - Author Patryk Piotrowski");
+            Console.Write("Insert your login: ");
+            _login = Console.ReadLine();
+            Console.Write("Insert your password: ");
+            _password = Console.ReadLine();
+            Console.Write("Insert ftp address: ");
+            _hosting = Console.ReadLine();
+            Console.Write("Insert FTP server port: ");
+            _port = Int32.Parse(Console.ReadLine());
+
+            
+
+            //_login = "unaux_22147793";
+            //_password = "tajnehaslo";
+            //_hosting = "ftp.unaux.com";
+            //_port = 21;
 
             EstablishConnection();
 
@@ -80,8 +95,19 @@ namespace Lab4
         {
  
             _passiveSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            _passiveSocket.Connect(_passiveServerAddress, _passiveServerPort);
-            _passiveSocket.ReceiveTimeout = 2000;
+            try
+            {
+                _passiveSocket.Connect(_passiveServerAddress, _passiveServerPort);
+                _passiveSocket.ReceiveTimeout = 2000;
+            }
+            catch
+            {
+                GenerateNewPassiveSocket();
+                _passiveSocket.Connect(_passiveServerAddress, _passiveServerPort);
+                _passiveSocket.ReceiveTimeout = 2000;
+            }
+
+
 
             string outputString = GetCurrentSocketInfo(_passiveSocket);
 
@@ -116,7 +142,6 @@ namespace Lab4
 
             if (outputString.Contains("230"))
             {
-                Console.WriteLine("Successfully connected to FTP server");
                 GenerateNewPassiveSocket();
                 Console.WriteLine("Connected successfully to FTP Server. Press any key to continue...");
                 Console.ReadKey();
@@ -151,8 +176,17 @@ namespace Lab4
                     break;
                 }
 
-            _passiveServerAddress = numbers[idx + 1] + "." + numbers[idx + 2] + "." + numbers[idx + 3] + "." + numbers[idx + 4];
-            _passiveServerPort = Int32.Parse(numbers[idx + 5]) * 256 + Int32.Parse(numbers[idx + 6]);
+            try
+            {
+                _passiveServerAddress = numbers[idx + 1] + "." + numbers[idx + 2] + "." + numbers[idx + 3] + "." + numbers[idx + 4];
+                _passiveServerPort = Int32.Parse(numbers[idx + 5]) * 256 + Int32.Parse(numbers[idx + 6]);
+
+            }
+            catch
+            {
+                Console.WriteLine("Error while creating new passive server port.");
+            }
+
 
 
         }
@@ -215,7 +249,7 @@ namespace Lab4
 
                 string[] tmp = currentDir.Split(" ");
 
-                if (tmp[0].Contains("d") && !directoryList.Contains(tmp[tmp.Length - 1]))
+                if (tmp[0].Contains("d") && !tmp[tmp.Length -1].Contains(".") && !directoryList.Contains(tmp[tmp.Length - 1]))
                     directoryList.Add(tmp[tmp.Length - 1]);
             }
 
@@ -234,7 +268,7 @@ namespace Lab4
 
                 string[] tmp = currentDir.Split(" ");
 
-                if (!tmp[0].Contains("d") && !fileList.Contains(tmp[tmp.Length - 1]))
+                if (!tmp[0].Contains("d") && tmp[tmp.Length-1] != "" && !fileList.Contains(tmp[tmp.Length - 1]))
                     fileList.Add(tmp[tmp.Length - 1]);
             }
 
@@ -314,46 +348,52 @@ namespace Lab4
             string output = GetPassiveSocketInformation();
 
 
-            DisplayDirectory(GetDirectoryList(output), GetFileList(output), 0);
+            DisplayDirectory("/", 0);
 
+
+            Console.WriteLine("\nPress any key to continue...");
             Console.ReadKey();
 
         }
 
 
-        private void DisplayDirectory(List<string> directoryList, List<string> fileList, int node)
+        private void DisplayDirectory(string dirName, int node)
         {
+            GenerateNewPassiveSocket();
+            GetCurrentSocketInfo(_mainSocket);
+            _mainSocket.Send(Encoding.UTF8.GetBytes("cwd " + dirName + "\r\n"));
+            Thread.Sleep(400);
+            _mainSocket.Send(Encoding.UTF8.GetBytes("list\r\n"));
+
+            string output = GetPassiveSocketInformation();
+            Thread.Sleep(400);
+
+            List<string> fileList = GetFileList(output);
+            List<string> directoryList = GetDirectoryList(output);
+
+            for (int i = 0; i < node-1; i++)
+                Console.Write("|\t");
+
+
+
+            Console.WriteLine("|---" + Path.GetFileName(dirName));
 
             foreach(string currentFile in fileList)
             {
+                for(int i=0;i<node;i++)
+                    Console.Write("|\t");
 
-                for (int i = 0; i < node; i++)
-                    Console.Write("-");
 
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.WriteLine(currentFile);
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine(" " + currentFile);
                 Console.ResetColor();
-
             }
 
 
+            foreach(string currentDirectory in directoryList)
+                DisplayDirectory(dirName + "/" + currentDirectory, node + 1);
 
-
-            foreach(string currentDir in directoryList)
-            {
-                for (int i = 0; i < node; i++)
-                    Console.Write("-");
-                Console.WriteLine(currentDir);
-
-                GenerateNewPassiveSocket();
-                _mainSocket.Send(Encoding.UTF8.GetBytes("cwd " + currentDir + "\r\n"));
-                Thread.Sleep(500);
-                _mainSocket.Send(Encoding.UTF8.GetBytes("list\r\n"));
-                string output = GetPassiveSocketInformation();
-
-                DisplayDirectory(GetDirectoryList(output), GetFileList(output), node + 1);
-            }
-
+           
 
         }
 
